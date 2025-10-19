@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy  # <-- 1. IMPORTAR
 from flask_bcrypt import Bcrypt  # <-- 1. IMPORTAR BCRYPT
+from flask import request, jsonify # <-- AÑADE ESTO AL BLOQUE DE IMPORTS DE FLASK
 
 # Creamos una instancia de la aplicación Flask
 app = Flask(__name__)
@@ -42,3 +43,55 @@ class Rating(db.Model):
 @app.route("/")
 def home():
     return "¡Hola, mundo desde Flask!"
+
+# --- API DE USUARIOS ---
+
+@app.route("/api/register", methods=['POST'])
+def register_user():
+    # 1. Obtener los datos JSON que nos envía el cliente (Postman)
+    data = request.json
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+
+    # 2. Validar que recibimos todos los datos
+    if not username or not email or not password:
+        # 400 = Bad Request (Petición incorrecta)
+        return jsonify({"error": "Faltan datos (username, email, password)"}), 400
+
+    # 3. Verificar si el usuario o email ya existen en la BD
+    if User.query.filter_by(email=email).first():
+        # 409 = Conflict (El recurso ya existe)
+        return jsonify({"error": "El email ya está registrado"}), 409
+    
+    if User.query.filter_by(username=username).first():
+        return jsonify({"error": "El nombre de usuario ya está en uso"}), 409
+
+    # 4. Hashear la contraseña para guardarla de forma segura
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+    
+    # 5. Crear el nuevo usuario con el modelo
+    nuevo_usuario = User(
+        username=username, 
+        email=email, 
+        password_hash=hashed_password
+    )
+    
+    # 6. Guardar el usuario en la base de datos
+    try:
+        db.session.add(nuevo_usuario)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback() # Revertir cambios si algo sale mal
+        return jsonify({"error": "Error al guardar en la base de datos", "detalle": str(e)}), 500 # 500 = Error interno
+
+    # 7. Enviar una respuesta de éxito
+    # 201 = Created (Se creó un nuevo recurso)
+    return jsonify({
+        "mensaje": f"Usuario '{username}' creado exitosamente",
+        "usuario": {
+            "id": nuevo_usuario.id,
+            "username": nuevo_usuario.username,
+            "email": nuevo_usuario.email
+        }
+    }), 201
