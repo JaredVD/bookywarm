@@ -2,6 +2,8 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy  # <-- 1. IMPORTAR
 from flask_bcrypt import Bcrypt  # <-- 1. IMPORTAR BCRYPT
 from flask import request, jsonify # <-- AÑADE ESTO AL BLOQUE DE IMPORTS DE FLASK
+import os  # <-- AÑADE ESTO, para leer variables de entorno
+import requests # <-- AÑADE ESTO, para llamar a la API de Google
 
 # Creamos una instancia de la aplicación Flask
 app = Flask(__name__)
@@ -127,3 +129,47 @@ def login_user():
             "email": user.email
         }
     }), 200 # 200 = OK
+    
+# --- API DE LIBROS ---
+
+@app.route("/api/books/search", methods=['GET'])
+def search_books():
+    # 1. Obtener el término de búsqueda de los parámetros de la URL (ej: ?q=dune)
+    query = request.args.get('q')
+    
+    if not query:
+        return jsonify({"error": "Se requiere un parámetro de búsqueda 'q'"}), 400
+
+    # 2. Obtener la clave de API de forma segura desde el .env
+    api_key = os.environ.get('GOOGLE_BOOKS_API_KEY')
+    if not api_key:
+        return jsonify({"error": "Clave de API de Google Books no configurada"}), 500
+
+    # 3. Construir la URL para la API de Google Books
+    google_api_url = f"https://www.googleapis.com/books/v1/volumes?q={query}&key={api_key}"
+
+    # 4. Hacer la petición a la API de Google
+    try:
+        response = requests.get(google_api_url)
+        response.raise_for_status() # Lanza un error si la petición falló (ej. 404, 500)
+        data = response.json() # Convertir la respuesta de Google a JSON
+
+        # 5. (Opcional pero recomendado) Limpiar y formatear la respuesta
+        # El JSON de Google es enorme. Vamos a devolver solo lo que necesitamos.
+        libros_encontrados = []
+        if 'items' in data:
+            for item in data['items']:
+                info = item.get('volumeInfo', {})
+                libros_encontrados.append({
+                    "google_books_id": item.get('id'),
+                    "title": info.get('title'),
+                    "authors": info.get('authors', []), # Autores es una lista
+                    "published_date": info.get('publishedDate'),
+                    "description": info.get('description'),
+                    "cover_image": info.get('imageLinks', {}).get('thumbnail')
+                })
+
+        return jsonify(libros_encontrados), 200
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": "Error al contactar la API de Google", "detalle": str(e)}), 503
