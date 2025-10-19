@@ -206,3 +206,73 @@ def get_profile():
         "username": user.username,
         "email": user.email
     }), 200    
+    
+# --- NUEVA RUTA PARA GUARDAR/CALIFICAR UN LIBRO ---
+@app.route("/api/books/save", methods=['POST'])
+@jwt_required() # <--- ¡PROTEGIDO! Solo usuarios logueados
+def save_book():
+    # 1. Obtener la ID del usuario desde el token
+    current_user_id = get_jwt_identity()
+    
+    # 2. Obtener los datos del JSON que envía el usuario
+    data = request.json
+    google_books_id = data.get('google_books_id')
+    rating = data.get('rating') # La calificación (ej. 5)
+
+    # (Añadiremos más datos del libro para guardarlos)
+    title = data.get('title')
+    author = data.get('author') # Esperamos una sola cadena
+    
+    # 3. Validar los datos
+    if not google_books_id or not rating or not title:
+        return jsonify({"error": "Faltan datos (google_books_id, rating, title)"}), 400
+
+    # 4. Obtener el User (sabemos que existe por el token)
+    user = User.query.get(current_user_id)
+
+    # 5. Buscar si el libro YA existe en nuestra BD (tabla Books)
+    book = Book.query.filter_by(google_books_id=google_books_id).first()
+
+    # 6. Si el libro NO existe en nuestra BD, lo creamos
+    if not book:
+        book = Book(
+            google_books_id=google_books_id,
+            title=title,
+            author=author # Simplificado a una cadena
+        )
+        db.session.add(book)
+        # Hacemos un "commit" parcial para que 'book' obtenga un ID
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": "Error al guardar nuevo libro", "detalle": str(e)}), 500
+
+    # 7. Verificar si ya existe una calificación de ESTE usuario para ESTE libro
+    existing_rating = Rating.query.filter_by(
+        user_id=user.id, 
+        book_id=book.id
+    ).first()
+
+    if existing_rating:
+        # Si ya existe, actualizamos la calificación
+        existing_rating.rating = rating
+        mensaje = "Calificación actualizada"
+    else:
+        # Si no existe, creamos la nueva calificación (Rating)
+        new_rating = Rating(
+            rating=rating,
+            user_id=user.id,
+            book_id=book.id
+        )
+        db.session.add(new_rating)
+        mensaje = "Libro guardado y calificado"
+
+    # 8. Guardar los cambios finales en la BD
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Error al guardar calificación", "detalle": str(e)}), 500
+
+    return jsonify({"mensaje": mensaje, "book_id": book.id}), 201
