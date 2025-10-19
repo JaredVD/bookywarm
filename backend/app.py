@@ -4,6 +4,7 @@ from flask_bcrypt import Bcrypt  # <-- 1. IMPORTAR BCRYPT
 from flask import request, jsonify # <-- AÑADE ESTO AL BLOQUE DE IMPORTS DE FLASK
 import os  # <-- AÑADE ESTO, para leer variables de entorno
 import requests # <-- AÑADE ESTO, para llamar a la API de Google
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity # <-- 1. IMPORTAR
 
 # Creamos una instancia de la aplicación Flask
 app = Flask(__name__)
@@ -12,10 +13,12 @@ bcrypt = Bcrypt(app)  # <-- 2. INICIALIZAR BCRYPT
 # --- CONFIGURACIÓN DE LA BASE DE DATOS ---
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bookywarm.db' # <-- 2. CONFIGURAR
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # <-- 3. CONFIGURAR (mejora el rendimiento)
+# --- CONFIGURACIÓN DE JWT ---
+app.config["JWT_SECRET_KEY"] = os.environ.get('JWT_SECRET_KEY') # <-- 2. CONFIGURAR CLAVE
 
 # --- INICIALIZAR LA BASE DE DATOS ---
 db = SQLAlchemy(app) # <-- 4. INICIALIZAR
-
+jwt = JWTManager(app) # <-- 3. INICIALIZAR JWT
 # --- DEFINICIÓN DE MODELOS (NUESTRO PLANO) ---
 
 class User(db.Model):
@@ -120,15 +123,23 @@ def login_user():
         # 401 = Unauthorized (No autorizado)
         return jsonify({"error": "Email o contraseña incorrectos"}), 401
 
-    # 5. Si todo es correcto, enviamos respuesta de éxito
+    # 5. ¡ÉXITO! Crear el "Pase VIP" (Token)
+    # El "identity" es el dato que guardamos dentro del token (su ID)
+    # access_token = create_access_token(identity=user.id)
+    #corregido
+    # Esta es la línea CORRECTA
+    access_token = create_access_token(identity=str(user.id))
+    
+    # 6. Devolver el token al usuario
     return jsonify({
         "mensaje": f"Inicio de sesión exitoso. ¡Bienvenido, {user.username}!",
+        "access_token": access_token, # <-- 6. DEVOLVER TOKEN
         "usuario": {
             "id": user.id,
             "username": user.username,
             "email": user.email
         }
-    }), 200 # 200 = OK
+    }), 200
     
 # --- API DE LIBROS ---
 
@@ -173,3 +184,25 @@ def search_books():
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": "Error al contactar la API de Google", "detalle": str(e)}), 503
+
+# --- RUTA DE PRUEBA PROTEGIDA ---
+
+@app.route("/api/profile", methods=['GET'])
+@jwt_required()  # <--- ¡EL GUARDIA DE SEGURIDAD!
+def get_profile():
+    # 1. Si llegamos aquí, el token es válido.
+    # Obtenemos la identidad (el user_id) que guardamos en el token.
+    current_user_id = get_jwt_identity()
+    
+    # 2. Buscamos al usuario en la BD con esa id
+    user = User.query.get(current_user_id)
+    
+    if not user:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    # 3. Devolvemos la información del usuario
+    return jsonify({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email
+    }), 200    
