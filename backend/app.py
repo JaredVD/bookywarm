@@ -46,6 +46,7 @@ def home():
 
 # --- API DE USUARIOS ---
 
+# --Registro de usuario
 @app.route("/api/register", methods=['POST'])
 def register_user():
     # 1. Obtener los datos JSON que nos envía el cliente (Postman)
@@ -95,3 +96,34 @@ def register_user():
             "email": nuevo_usuario.email
         }
     }), 201
+    
+#--Login de usuario
+@app.route("/api/login", methods=['POST'])
+def login_user():
+    # 1. Obtener los datos JSON
+    data = request.json
+    email = data.get('email')
+    password = data.get('password')
+
+    # 2. Validar que recibimos todo
+    if not email or not password:
+        return jsonify({"error": "Faltan datos (email, password)"}), 400
+
+    # 3. Buscar al usuario por email
+    user = User.query.filter_by(email=email).first()
+
+    # 4. Si el usuario no existe O la contraseña no coincide...
+    # Usamos bcrypt.check_password_hash() para comparar
+    if not user or not bcrypt.check_password_hash(user.password_hash, password):
+        # 401 = Unauthorized (No autorizado)
+        return jsonify({"error": "Email o contraseña incorrectos"}), 401
+
+    # 5. Si todo es correcto, enviamos respuesta de éxito
+    return jsonify({
+        "mensaje": f"Inicio de sesión exitoso. ¡Bienvenido, {user.username}!",
+        "usuario": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email
+        }
+    }), 200 # 200 = OK
