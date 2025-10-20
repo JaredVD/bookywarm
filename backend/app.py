@@ -1,11 +1,11 @@
+#Importaciones
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy  # <-- 1. IMPORTAR
-from flask_bcrypt import Bcrypt  # <-- 1. IMPORTAR BCRYPT
-from flask import request, jsonify # <-- AÑADE ESTO AL BLOQUE DE IMPORTS DE FLASK
-import os  # <-- AÑADE ESTO, para leer variables de entorno
-import requests # <-- AÑADE ESTO, para llamar a la API de Google
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity # <-- 1. IMPORTAR
-
+from flask_sqlalchemy import SQLAlchemy  
+from flask_bcrypt import Bcrypt 
+from flask import request, jsonify 
+import os  # para leer variables de entorno
+import requests # para llamar a la API de Google
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity 
 # Creamos una instancia de la aplicación Flask
 app = Flask(__name__)
 bcrypt = Bcrypt(app)  # <-- 2. INICIALIZAR BCRYPT
@@ -27,6 +27,12 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
+    
+    # --- ¡NUEVA RELACIÓN! ---
+    # Un usuario tiene muchas calificaciones.
+    # 'Rating' es el nombre de la CLASE (el modelo).
+    # 'back_populates' le dice a SQLAlchemy cómo conectar esto con el modelo Rating.
+    ratings = db.relationship('Rating', back_populates='user')
 
 class Book(db.Model):
     __tablename__ = 'books'
@@ -35,6 +41,10 @@ class Book(db.Model):
     title = db.Column(db.String(200), nullable=False)
     author = db.Column(db.String(150))
 
+    # --- ¡NUEVA RELACIÓN! ---
+    # Un libro tiene muchas calificaciones.
+    ratings = db.relationship('Rating', back_populates='book')
+    
 class Rating(db.Model):
     __tablename__ = 'ratings'
     id = db.Column(db.Integer, primary_key=True)
@@ -44,6 +54,12 @@ class Rating(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     book_id = db.Column(db.Integer, db.ForeignKey('books.id'), nullable=False)
 
+    # --- ¡NUEVAS RELACIONES! ---
+    # Una calificación pertenece a UN usuario.
+    user = db.relationship('User', back_populates='ratings')
+    # Una calificación pertenece a UN libro.
+    book = db.relationship('Book', back_populates='ratings')
+    
 # --- RUTAS ---
 @app.route("/")
 def home():
