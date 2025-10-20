@@ -157,6 +157,37 @@ def login_user():
         }
     }), 200
     
+    # --- NUEVA RUTA PARA VER LOS LIBROS GUARDADOS DEL USUARIO ---
+@app.route("/api/my-books", methods=['GET'])
+@jwt_required() # <--- ¡PROTEGIDO!
+def get_my_books():
+    # 1. Obtenemos la identidad del usuario desde el token
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+
+    if not user:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    # 2. ¡LA MAGIA DE LA MISIÓN #15!
+    # Simplemente accedemos a 'user.ratings'
+    # 'user.ratings' es una lista de objetos 'Rating'
+    libros_guardados = []
+    for rating in user.ratings:
+        # Para cada objeto 'Rating', accedemos a su 'libro' y 'calificación'
+        # Esto es posible gracias a 'db.relationship'
+        libros_guardados.append({
+            "rating_id": rating.id,
+            "rating": rating.rating,
+            "book": {
+                "id": rating.book.id,
+                "google_books_id": rating.book.google_books_id,
+                "title": rating.book.title,
+                "author": rating.book.author
+            }
+        })
+
+    # 3. Devolvemos la lista de libros y calificaciones
+    return jsonify(libros_guardados), 200
 # --- API DE LIBROS ---
 
 @app.route("/api/books/search", methods=['GET'])
