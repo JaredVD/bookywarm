@@ -3,37 +3,40 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy  
 from flask_bcrypt import Bcrypt 
 from flask import request, jsonify 
-import os  # para leer variables de entorno
+import os  # para leer variables de entorno. Nos da acceso al sistema operativo incluyendo las variables de entorno
 import requests # para llamar a la API de Google
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity 
-# Creamos una instancia de la aplicación Flask
-app = Flask(__name__)
-bcrypt = Bcrypt(app)  # <-- 2. INICIALIZAR BCRYPT
 
-# --- CONFIGURACIÓN DE LA BASE DE DATOS ---
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bookywarm.db' # <-- 2. CONFIGURAR
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # <-- 3. CONFIGURAR (mejora el rendimiento)
+app = Flask(__name__)# Creamos una instancia de la aplicación Flask
+bcrypt = Bcrypt(app)  # Inicializamos BCRYPT
+
+# CONFIGURACIÓN DE LA BASE DE DATOS 
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bookywarm.db' # Configuracion
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Para mejorar el rendimiento
 # --- CONFIGURACIÓN DE JWT ---
-app.config["JWT_SECRET_KEY"] = os.environ.get('JWT_SECRET_KEY') # <-- 2. CONFIGURAR CLAVE
+app.config["JWT_SECRET_KEY"] = os.environ.get('JWT_SECRET_KEY') # Configuracion de clave
 
-# --- INICIALIZAR LA BASE DE DATOS ---
-db = SQLAlchemy(app) # <-- 4. INICIALIZAR
-jwt = JWTManager(app) # <-- 3. INICIALIZAR JWT
-# --- DEFINICIÓN DE MODELOS (NUESTRO PLANO) ---
+# INICIALIZAR VARIABLES
+db = SQLAlchemy(app) # Inicializar base de datos
+jwt = JWTManager(app) # inicializar jwt
 
+#Tablas de bases de datos
+
+#Tabla de usuarios
 class User(db.Model):
-    __tablename__ = 'users'  # Nombre de la tabla
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     
-    # --- ¡NUEVA RELACIÓN! ---
+    # --- Nueva Relacion---
     # Un usuario tiene muchas calificaciones.
     # 'Rating' es el nombre de la CLASE (el modelo).
     # 'back_populates' le dice a SQLAlchemy cómo conectar esto con el modelo Rating.
     ratings = db.relationship('Rating', back_populates='user')
 
+#Tabla de libros
 class Book(db.Model):
     __tablename__ = 'books'
     id = db.Column(db.Integer, primary_key=True)
@@ -41,10 +44,11 @@ class Book(db.Model):
     title = db.Column(db.String(200), nullable=False)
     author = db.Column(db.String(150))
 
-    # --- ¡NUEVA RELACIÓN! ---
+    # --- Nueva Relacion---
     # Un libro tiene muchas calificaciones.
     ratings = db.relationship('Rating', back_populates='book')
     
+#Tabla de calificación
 class Rating(db.Model):
     __tablename__ = 'ratings'
     id = db.Column(db.Integer, primary_key=True)
@@ -54,7 +58,7 @@ class Rating(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     book_id = db.Column(db.Integer, db.ForeignKey('books.id'), nullable=False)
 
-    # --- ¡NUEVAS RELACIONES! ---
+    # --- Nueva Relacion---
     # Una calificación pertenece a UN usuario.
     user = db.relationship('User', back_populates='ratings')
     # Una calificación pertenece a UN libro.
@@ -141,10 +145,7 @@ def login_user():
 
     # 5. ¡ÉXITO! Crear el "Pase VIP" (Token)
     # El "identity" es el dato que guardamos dentro del token (su ID)
-    # access_token = create_access_token(identity=user.id)
-    #corregido
-    # Esta es la línea CORRECTA
-    access_token = create_access_token(identity=str(user.id))
+    access_token = create_access_token(identity=str(user.id)) #convertimos el id que es int en un string, es importante ya que JWT prefiere que la identidad del usuario (id) se guarde como string
     
     # 6. Devolver el token al usuario
     return jsonify({
@@ -188,17 +189,17 @@ def get_my_books():
 
     # 3. Devolvemos la lista de libros y calificaciones
     return jsonify(libros_guardados), 200
-# --- API DE LIBROS ---
 
+# --- API DE LIBROS ---
 @app.route("/api/books/search", methods=['GET'])
 def search_books():
-    # 1. Obtener el término de búsqueda de los parámetros de la URL (ej: ?q=dune)
+    # 1. lo siguiente lee los parametros de la url despues del ? (ej: ?q=dune)
     query = request.args.get('q')
     
     if not query:
         return jsonify({"error": "Se requiere un parámetro de búsqueda 'q'"}), 400
 
-    # 2. Obtener la clave de API de forma segura desde el .env
+    # 2. Obtener la clave de API de Google books de forma segura desde el .env
     api_key = os.environ.get('GOOGLE_BOOKS_API_KEY')
     if not api_key:
         return jsonify({"error": "Clave de API de Google Books no configurada"}), 500
@@ -208,7 +209,7 @@ def search_books():
 
     # 4. Hacer la petición a la API de Google
     try:
-        response = requests.get(google_api_url)
+        response = requests.get(google_api_url) #con esto hacemos una peticioin get
         response.raise_for_status() # Lanza un error si la petición falló (ej. 404, 500)
         data = response.json() # Convertir la respuesta de Google a JSON
 
@@ -216,7 +217,7 @@ def search_books():
         # El JSON de Google es enorme. Vamos a devolver solo lo que necesitamos.
         libros_encontrados = []
         if 'items' in data:
-            for item in data['items']:
+            for item in data['items']:#con el siguiente for devolvemos solo la información que queremos
                 info = item.get('volumeInfo', {})
                 libros_encontrados.append({
                     "google_books_id": item.get('id'),
@@ -233,13 +234,12 @@ def search_books():
         return jsonify({"error": "Error al contactar la API de Google", "detalle": str(e)}), 503
 
 # --- RUTA DE PRUEBA PROTEGIDA ---
-
 @app.route("/api/profile", methods=['GET'])
-@jwt_required()  # <--- ¡EL GUARDIA DE SEGURIDAD!
+@jwt_required()  # <--- ¡EL GUARDIA DE SEGURIDAD! valida si el token es valido
 def get_profile():
     # 1. Si llegamos aquí, el token es válido.
     # Obtenemos la identidad (el user_id) que guardamos en el token.
-    current_user_id = get_jwt_identity()
+    current_user_id = get_jwt_identity() #get_jwt_identity() extrae el id del usuario.
     
     # 2. Buscamos al usuario en la BD con esa id
     user = User.query.get(current_user_id)
@@ -323,3 +323,47 @@ def save_book():
         return jsonify({"error": "Error al guardar calificación", "detalle": str(e)}), 500
 
     return jsonify({"mensaje": mensaje, "book_id": book.id}), 201
+
+@app.route("/api/ratings/<int:rating_id>", methods=['PUT']) #PUT es el método HTTP estándar para actualizar un recurso existente
+#<int:rating_id> Esta es una ruta dinamica. Le decimos a Flask que espere un número en la URL (el ID de la calificación que queremos cambiar), ahi irá el id del libro que tengas guardado y calificado
+@jwt_required()
+def update_rating(rating_id):
+    # 1. Obtenemos la identidad del usuario desde el token
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id) # Obtenemos el objeto User
+
+    # 2. Buscamos la calificación específica por su ID
+    rating_to_update = Rating.query.get(rating_id)
+
+    # 3. Validaciones de seguridad
+    if not rating_to_update:
+        return jsonify({"error": "Calificación no encontrada"}), 404
+
+    # ¡MUY IMPORTANTE! Verificar que el usuario es dueño de esta calificación
+    if rating_to_update.user_id != user.id:
+        return jsonify({"error": "No autorizado para modificar esta calificación"}), 403 # 403 = Forbidden
+
+    # 4. Obtener la nueva calificación del JSON
+    data = request.json
+    new_rating_value = data.get('rating')
+
+    if not new_rating_value:
+        return jsonify({"error": "Falta el campo 'rating'"}), 400
+
+    # 5. Actualizar el valor y guardar en la BD
+    try:
+        rating_to_update.rating = new_rating_value
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Error al actualizar la calificación", "detalle": str(e)}), 500
+
+    # 6. Devolver la calificación actualizada
+    return jsonify({
+        "mensaje": "Calificación actualizada exitosamente",
+        "rating": {
+            "id": rating_to_update.id,
+            "book_id": rating_to_update.book_id,
+            "rating": rating_to_update.rating
+        }
+    }), 200
