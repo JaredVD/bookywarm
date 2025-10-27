@@ -111,7 +111,7 @@ def register_user():
     # 6. Guardar el usuario en la base de datos
     try:
         db.session.add(nuevo_usuario)
-        db.session.commit()
+        db.session.commit()#guarda al usuario nuevo en la base de datos
     except Exception as e:
         db.session.rollback() # Revertir cambios si algo sale mal
         return jsonify({"error": "Error al guardar en la base de datos", "detalle": str(e)}), 500 # 500 = Error interno
