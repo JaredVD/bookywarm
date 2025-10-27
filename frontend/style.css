@@ -11,7 +11,7 @@ body {
 }
 
 /* Contenedor principal de formularios */
-#form-container {
+#auth-container {
     background-color: #ffffff;
     padding: 2rem;
     border-radius: 8px;
@@ -73,4 +73,7 @@ hr {
     margin: 2rem 0;
     border: none;
     border-top: 1px solid #eee;
+}
+.hidden {
+    display: none;
 }
