@@ -5,10 +5,15 @@ from flask_bcrypt import Bcrypt
 from flask import request, jsonify 
 import os  # para leer variables de entorno. Nos da acceso al sistema operativo incluyendo las variables de entorno
 import requests # para llamar a la API de Google
+from flask_cors import CORS # <-- 1. IMPORTAR CORS (por ahora permitirá cualquier origen)
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity 
 
 app = Flask(__name__)# Creamos una instancia de la aplicación Flask
 bcrypt = Bcrypt(app)  # Inicializamos BCRYPT
+
+# --- CONFIGURACIÓN DE CORS ---
+# Permitir peticiones de cualquier origen (temporalmente para desarrollo)
+CORS(app) # <-- 2. INICIALIZAR CORS
 
 # CONFIGURACIÓN DE LA BASE DE DATOS 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bookywarm.db' # Configuracion
