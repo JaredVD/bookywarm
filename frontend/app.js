@@ -62,4 +62,65 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Selectores del DOM (Formulario de Login) ---
+    const loginForm = document.getElementById('login-form');
+    const loginMessage = document.getElementById('login-message');
+
+    // --- Lógica de Login ---
+    if (loginForm) {
+        // 1. Escuchar el evento "submit" del formulario
+        loginForm.addEventListener('submit', async (event) => {
+            
+            // 2. Prevenir la recarga de la página
+            event.preventDefault();
+
+            // 3. Obtener los valores
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            const loginData = {
+                email: email,
+                password: password
+            };
+
+            // 5. Enviar los datos al backend
+            try {
+                const response = await fetch(API_URL + '/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(loginData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // ¡ÉXITO!
+                    loginMessage.textContent = data.mensaje;
+                    loginMessage.style.color = 'green';
+                    
+                    // --- ¡LO MÁS IMPORTANTE! ---
+                    // Guardamos el token en el "almacén local" del navegador
+                    localStorage.setItem('access_token', data.access_token);
+
+                    loginForm.reset();
+                    
+                    // (En un futuro, aquí redirigiríamos al usuario a otra página)
+                    console.log("Token guardado:", data.access_token); //localStorage es un pequeño "almacén" que tiene el navegador. Le estamos diciendo: "Guarda este access_token y no lo borres aunque el usuario cierre la pestaña". Así, podemos usar este "pase VIP" en el futuro para otras peticiones.
+
+                } else {
+                    // Error (ej. 401 Unauthorized)
+                    loginMessage.textContent = 'Error: ' + data.error;
+                    loginMessage.style.color = 'red';
+                }
+
+            } catch (error) {
+                // Error de red
+                console.error('Error de red al iniciar sesión:', error);
+                loginMessage.textContent = 'Error de conexión. Inténtalo más tarde.';
+                loginMessage.style.color = 'red';
+            }
+        });
+    }
 });
