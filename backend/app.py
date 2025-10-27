@@ -367,3 +367,33 @@ def update_rating(rating_id):
             "rating": rating_to_update.rating
         }
     }), 200
+    
+    # --- NUEVA RUTA PARA ELIMINAR UNA CALIFICACIÓN ---
+@app.route("/api/ratings/<int:rating_id>", methods=['DELETE'])
+@jwt_required()
+def delete_rating(rating_id):
+    # 1. Obtenemos la identidad del usuario desde el token
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+
+    # 2. Buscamos la calificación específica por su ID
+    rating_to_delete = Rating.query.get(rating_id)
+
+    # 3. Validaciones de seguridad
+    if not rating_to_delete:
+        return jsonify({"error": "Calificación no encontrada"}), 404
+
+    # 4. ¡MUY IMPORTANTE! Verificar que el usuario es dueño de esta calificación
+    if rating_to_delete.user_id != user.id:
+        return jsonify({"error": "No autorizado para eliminar esta calificación"}), 403 # 403 = Forbidden
+
+    # 5. Eliminar el objeto de la sesión de la BD
+    try:
+        db.session.delete(rating_to_delete)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Error al eliminar la calificación", "detalle": str(e)}), 500
+
+    # 6. Devolver una respuesta de éxito (sin contenido)
+    return jsonify({"mensaje": "Calificación eliminada exitosamente"}), 200 # 200 OK o 204 No Content
