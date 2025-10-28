@@ -162,3 +162,36 @@ hr {
 .rating-input select {
     padding: 0.25rem;
 }
+/* --- Estilos de Mis Libros --- */
+
+#my-books-container {
+    margin-top: 2rem;
+}
+
+/* Usamos los mismos estilos de tarjeta, pero añadimos
+   un botón de "Eliminar" y "Actualizar" */
+#my-books-list .book-card-actions {
+    display: flex;
+    flex-direction: column; /* Botones uno encima del otro */
+    gap: 0.5rem;
+}
+
+#my-books-list .book-card-actions button {
+    width: 100%; /* Que ocupen todo el ancho de su columna */
+}
+
+/* Botón de Actualizar (Naranja) */
+.update-rating-btn {
+    background-color: #f0ad4e;
+}
+.update-rating-btn:hover {
+    background-color: #ec971f;
+}
+
+/* Botón de Eliminar (Rojo) */
+.delete-rating-btn {
+    background-color: #d9534f;
+}
+.delete-rating-btn:hover {
+    background-color: #c9302c;
+}

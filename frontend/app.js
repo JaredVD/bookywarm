@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchQuery = document.getElementById('search-query');
     const searchResults = document.getElementById('search-results');
 
+    //--selector de los libros guardados
+    const myBooksList = document.getElementById('my-books-list');
+
     // --- Estado de la Aplicación ---
     checkLoginStatus();
 
@@ -57,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
         authContainer.classList.add('hidden');
         userDashboard.classList.remove('hidden');
         welcomeMessage.textContent = `¡Bienvenido, ${username}!`;
+
+        // ¡NUEVO! Cargar los libros del usuario al mostrar el dashboard
+        fetchAndRenderMyBooks();
     }
 
     /**
@@ -66,9 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
         authContainer.classList.remove('hidden');
         userDashboard.classList.add('hidden');
 
-    if (loginMessage) loginMessage.textContent = '';
-    if (registerMessage) registerMessage.textContent = '';
-
     // Limpiamos cualquier mensaje de éxito o error anterior. O sea, el parrafo de éxito o fracaso
     if (loginMessage) loginMessage.textContent = '';
     if (registerMessage) registerMessage.textContent = '';
@@ -76,6 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Limpiamos los resultados de búsqueda y el texto del input.
     if (searchResults) searchResults.innerHTML = '';
     if (searchQuery) searchQuery.value = '';
+
+    // ¡NUEVO! Limpiar la lista de "Mis Libros" al cerrar sesión
+        if (myBooksList) myBooksList.innerHTML = '';
 
     }
 
@@ -96,6 +102,84 @@ document.addEventListener('DOMContentLoaded', () => {
             throw new Error('Falló la obtención del perfil');
         }
         return await response.json(); // Devuelve los datos del usuario (id, username, email)
+    }
+
+    /**
+     * (NUEVA) Obtiene y muestra la lista de libros guardados por el usuario.
+     */
+    async function fetchAndRenderMyBooks() {
+        const token = localStorage.getItem('access_token');
+        if (!token) return; // Salir si no hay token
+
+        try {
+            const response = await fetch(`${API_URL}/api/my-books`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al obtener mis libros');
+            }
+
+            const myBooks = await response.json(); // Lista de objetos {rating, book}
+            
+            // Limpiar la lista
+            myBooksList.innerHTML = ''; 
+
+            if (myBooks.length === 0) {
+                myBooksList.innerHTML = '<p class="message">Aún no has guardado ningún libro.</p>';
+                return;
+            }
+
+            // Renderizar cada libro guardado
+            myBooks.forEach(item => {
+                const bookCard = document.createElement('div');
+                bookCard.className = 'book-card';
+                
+                // // Usar una imagen genérica (no la guardamos en la Misión 14, un error que corregiremos)
+                // const coverImage = 'https://via.placeholder.com/80x120.png?text=Book';
+                // const coverImage = item.book.cover_image_url ? item.book.cover_image_url : 'https://via.placeholder.com/80x120.png?text=No+Cover';
+                // const coverImage = item.book.cover_image_url ? item.book.cover_image_url.replace("http://", "https://") : 'https.via.placeholder.com/80x120.png?text=No+Cover';
+                // --- ¡ESTA ES LA LÓGICA CORRECTA Y LIMPIA! ---
+                // (Copiada de renderSearchResults)
+                const coverImage = item.book.cover_image_url 
+                    ? item.book.cover_image_url.replace("http://", "httpss://") 
+                    : 'https.via.placeholder.com/80x120.png?text=No+Cover';
+
+                bookCard.innerHTML = `
+                    <img src="${coverImage}" alt="Portada de ${item.book.title}">
+                    <div class="book-card-info">
+                        <h4>${item.book.title}</h4>
+                        <p><strong>Autor(es):</strong> ${item.book.author || 'Desconocido'}</p>
+                        <p><strong>Tu Calificación:</strong> ${item.rating} ★</p>
+                    </div>
+                    <div class="book-card-actions">
+                        <div class="rating-input">
+                             <select id="update-rating-${item.rating_id}">
+                                <option value="1">1 ★</option>
+                                <option value="2">2 ★</option>
+                                <option value="3">3 ★</option>
+                                <option value="4">4 ★</option>
+                                <option value="5">5 ★</option>
+                             </select>
+                             <button class="update-rating-btn" data-rating-id="${item.rating_id}">Actualizar</button>
+                        </div>
+                       
+                        <button class="delete-rating-btn" data-rating-id="${item.rating_id}">Eliminar de mi lista</button>
+                    </div>
+                `;
+                // Poner la calificación actual en el <select>
+                bookCard.querySelector(`#update-rating-${item.rating_id}`).value = item.rating;
+                
+                myBooksList.appendChild(bookCard);
+            });
+
+        } catch (error) {
+            console.error('Error cargando mis libros:', error);
+            myBooksList.innerHTML = '<p class="message" style="color: red;">Error al cargar tu lista de libros.</p>';
+        }
     }
 
 
@@ -158,8 +242,9 @@ document.addEventListener('DOMContentLoaded', () => {
             bookCard.className = 'book-card';
 
             // Usar una imagen genérica si no hay portada
-            const coverImage = book.cover_image ? book.cover_image : 'https.via.placeholder.com/80x120.png?text=No+Cover';
-            
+            // const coverImage = book.cover_image ? book.cover_image : 'https.via.placeholder.com/80x120.png?text=No+Cover';
+            const coverImage = book.cover_image ? book.cover_image.replace("http://", "https://") : 'https.via.placeholder.com/80x120.png?text=No+Cover';
+
             // Limitar la descripción
             const description = book.description ? book.description.substring(0, 150) + '...' : 'No hay descripción disponible.';
 
@@ -184,7 +269,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="save-book-btn" 
                             data-google-id="${book.google_books_id}"
                             data-title="${book.title}"
-                            data-author="${book.authors ? book.authors.join(', ') : 'Desconocido'}">
+                            data-author="${book.authors ? book.authors.join(', ') : 'Desconocido'}"
+                            data-cover-image="${coverImage}"> 
                         Guardar en mi lista
                     </button>
                 </div>
@@ -207,7 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const googleId = button.dataset.googleId;
         const title = button.dataset.title;
         const author = button.dataset.author;
-        
+        const coverImage = button.dataset.coverImage; // <-- ¡LÍNEA NUEVA!
+
         // 2. Obtener la calificación del <select> que está al lado
         // (Usamos selectores más avanzados para encontrar el <select> específico)
         const ratingSelect = document.getElementById(`rating-${googleId}`);
@@ -218,7 +305,8 @@ document.addEventListener('DOMContentLoaded', () => {
             google_books_id: googleId,
             title: title,
             author: author,
-            rating: parseInt(rating) // Convertir a número
+            rating: parseInt(rating), // Convertir a número
+            cover_image_url: coverImage // <-- ¡LÍNEA NUEVA!
         };
 
         // 4. Enviar los datos a nuestra API de "guardar"
@@ -239,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.textContent = '¡Guardado!';
                 button.disabled = true; // Deshabilitamos el botón
                 button.style.backgroundColor = '#5cb85c'; // Un verde más suave
+                fetchAndRenderMyBooks(); // <-- ¡LLAMAR A ESTA FUNCIÓN!
             } else {
                 alert('Error al guardar el libro: ' + data.error);
             }

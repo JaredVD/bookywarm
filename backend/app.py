@@ -49,6 +49,9 @@ class Book(db.Model):
     title = db.Column(db.String(200), nullable=False)
     author = db.Column(db.String(150))
 
+    # --- ¡LÍNEA NUEVA! ---
+    cover_image_url = db.Column(db.String(500), nullable=True) # URL de la portada
+    
     # --- Nueva Relacion---
     # Un libro tiene muchas calificaciones.
     ratings = db.relationship('Rating', back_populates='book')
@@ -188,7 +191,8 @@ def get_my_books():
                 "id": rating.book.id,
                 "google_books_id": rating.book.google_books_id,
                 "title": rating.book.title,
-                "author": rating.book.author
+                "author": rating.book.author,
+                "cover_image_url": rating.book.cover_image_url # <-- ¡ESTA ES LA LÍNEA QUE FALTABA!
             }
         })
 
@@ -274,6 +278,7 @@ def save_book():
     # (Añadiremos más datos del libro para guardarlos)
     title = data.get('title')
     author = data.get('author') # Esperamos una sola cadena
+    cover_image_url = data.get('cover_image_url') # <-- ¡LÍNEA NUEVA!
     
     # 3. Validar los datos
     if not google_books_id or not rating or not title:
@@ -290,7 +295,8 @@ def save_book():
         book = Book(
             google_books_id=google_books_id,
             title=title,
-            author=author # Simplificado a una cadena
+            author=author, # Simplificado a una cadena
+            cover_image_url=cover_image_url # <-- ¡LÍNEA NUEVA!
         )
         db.session.add(book)
         # Hacemos un "commit" parcial para que 'book' obtenga un ID
