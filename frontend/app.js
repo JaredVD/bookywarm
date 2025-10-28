@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (loginMessage) loginMessage.textContent = '';
     if (registerMessage) registerMessage.textContent = '';
-    
+
     // Limpiamos cualquier mensaje de éxito o error anterior. O sea, el parrafo de éxito o fracaso
     if (loginMessage) loginMessage.textContent = '';
     if (registerMessage) registerMessage.textContent = '';
@@ -193,7 +193,61 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    async function handleSaveBookClick(event) {
+        // Obtenemos el token. Si no hay, no hacemos nada.
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            console.error("No hay token para guardar el libro.");
+            return;
+        }
 
+        const button = event.target; // El botón exacto que se presionó
+
+        // 1. Obtener los datos del libro (que guardamos en los atributos data-)
+        const googleId = button.dataset.googleId;
+        const title = button.dataset.title;
+        const author = button.dataset.author;
+        
+        // 2. Obtener la calificación del <select> que está al lado
+        // (Usamos selectores más avanzados para encontrar el <select> específico)
+        const ratingSelect = document.getElementById(`rating-${googleId}`);
+        const rating = ratingSelect.value;
+
+        // 3. Crear el objeto de datos para la API
+        const bookData = {
+            google_books_id: googleId,
+            title: title,
+            author: author,
+            rating: parseInt(rating) // Convertir a número
+        };
+
+        // 4. Enviar los datos a nuestra API de "guardar"
+        try {
+            const response = await fetch(`${API_URL}/api/books/save`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // ¡Aquí usamos el Pase VIP!
+                },
+                body: JSON.stringify(bookData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Éxito. Cambiamos el texto del botón
+                button.textContent = '¡Guardado!';
+                button.disabled = true; // Deshabilitamos el botón
+                button.style.backgroundColor = '#5cb85c'; // Un verde más suave
+            } else {
+                alert('Error al guardar el libro: ' + data.error);
+            }
+
+        } catch (error) {
+            console.error('Error de red al guardar libro:', error);
+            alert('Error de conexión al guardar.');
+        }
+    }
 
     // --- Event Listeners (Oyentes de eventos) ---
 
@@ -334,4 +388,13 @@ document.addEventListener('DOMContentLoaded', () => {
         searchForm.addEventListener('submit', handleSearchSubmit);
     }
 
+    if (searchResults) {
+        searchResults.addEventListener('click', (event) => {
+            // Verificamos si el elemento en el que se hizo clic
+            // tiene la clase 'save-book-btn'
+            if (event.target.classList.contains('save-book-btn')) {
+                handleSaveBookClick(event);
+            }
+        });
+    }
 });
