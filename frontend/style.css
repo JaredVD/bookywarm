@@ -77,3 +77,88 @@ hr {
 .hidden {
     display: none;
 }
+
+/* --- Estilos del Dashboard --- */
+
+#search-container {
+    margin-top: 2rem;
+}
+
+/* Estilo para el formulario de búsqueda (input y botón en la misma línea) */
+#search-form .form-group {
+    display: flex;
+}
+
+#search-form input {
+    flex-grow: 1; /* El input toma todo el espacio disponible */
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+#search-form button {
+    width: auto; /* El botón toma su ancho natural */
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* Contenedor de resultados de búsqueda */
+#search-results {
+    margin-top: 1.5rem;
+}
+
+/* Tarjeta individual para cada libro encontrado */
+.book-card {
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex; /* Para poner la imagen al lado del texto */
+    gap: 1rem; /* Espacio entre imagen y texto */
+}
+
+.book-card img {
+    width: 80px;
+    height: auto;
+    object-fit: cover;
+}
+
+.book-card-info h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.book-card-info p {
+    font-size: 0.9rem;
+    color: #555;
+    /* Limitar la descripción a 3 líneas */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.book-card-actions button {
+    width: auto;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    background-color: #28a745; /* Verde */
+}
+
+.book-card-actions button:hover {
+    background-color: #218838;
+}
+
+/* Estilos para el "rating" (las estrellas que añadiremos) */
+.rating-input {
+    margin-top: 0.5rem;
+}
+.rating-input label {
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+}
+.rating-input select {
+    padding: 0.25rem;
+}

@@ -48,9 +48,20 @@
         </div>
 
         <section id="user-dashboard" class="hidden">
-        <h2 id="welcome-message">¡Bienvenido!</h2>
-        <button id="logout-button">Cerrar Sesión</button>
-
+            <h2 id="welcome-message">¡Bienvenido!</h2>
+            <button id="logout-button">Cerrar Sesión</button>
+            
+            <hr> <div id="search-container">
+            <h3>Buscar Libros</h3>
+            <form id="search-form">
+                <div class="form-group">
+                    <input type="text" id="search-query" placeholder="Buscar por título (ej. Dune)">
+                    <button type="submit">Buscar</button>
+                </div>
+            </form>
+            
+            <div id="search-results"></div>
+        </div>
         </section>
     </main>
 
