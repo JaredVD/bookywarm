@@ -15,6 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     const loginMessage = document.getElementById('login-message');
 
+    // --- Selectores del DOM (Búsqueda) (NUEVO) ---
+    const searchForm = document.getElementById('search-form');
+    const searchQuery = document.getElementById('search-query');
+    const searchResults = document.getElementById('search-results');
+
     // --- Estado de la Aplicación ---
     checkLoginStatus();
 
@@ -61,9 +66,17 @@ document.addEventListener('DOMContentLoaded', () => {
         authContainer.classList.remove('hidden');
         userDashboard.classList.add('hidden');
 
-        // Limpiamos cualquier mensaje de éxito o error anterior. O sea, el parrafo de éxito o fracaso
     if (loginMessage) loginMessage.textContent = '';
     if (registerMessage) registerMessage.textContent = '';
+    
+    // Limpiamos cualquier mensaje de éxito o error anterior. O sea, el parrafo de éxito o fracaso
+    if (loginMessage) loginMessage.textContent = '';
+    if (registerMessage) registerMessage.textContent = '';
+
+    // Limpiamos los resultados de búsqueda y el texto del input.
+    if (searchResults) searchResults.innerHTML = '';
+    if (searchQuery) searchQuery.value = '';
+
     }
 
     /**
@@ -84,6 +97,103 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return await response.json(); // Devuelve los datos del usuario (id, username, email)
     }
+
+
+    /**
+     * (NUEVA) Maneja el envío del formulario de búsqueda.
+     */
+    async function handleSearchSubmit(event) {
+        event.preventDefault();
+        const query = searchQuery.value.trim(); // Obtener el texto y quitar espacios
+        
+        if (!query) {
+            searchResults.innerHTML = '<p class="message" style="color: red;">Por favor, escribe un término de búsqueda.</p>';
+            return;
+        }
+
+        searchResults.innerHTML = '<p class="message">Buscando...</p>'; // Mensaje de carga
+
+        try {
+            const token = localStorage.getItem('access_token');
+            // Nota: La API de búsqueda de Google no requiere nuestro token,
+            // pero en un futuro podríamos querer proteger este endpoint.
+            // Por ahora, no es estrictamente necesario enviar el token.
+            
+            const response = await fetch(`${API_URL}/api/books/search?q=${query}`, {
+                method: 'GET',
+                headers: {
+                    // Si el endpoint estuviera protegido, añadiríamos la autorización:
+                    // 'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Error en la búsqueda');
+            }
+
+            const books = await response.json(); // La lista de libros
+            renderSearchResults(books);
+
+        } catch (error) {
+            console.error('Error al buscar libros:', error);
+            searchResults.innerHTML = '<p class="message" style="color: red;">Error al buscar. Inténtalo más tarde.</p>';
+        }
+    }
+
+    /**
+     * (NUEVA) Dibuja los resultados de la búsqueda en el HTML.
+     */
+    function renderSearchResults(books) {
+        // Limpiar resultados anteriores
+        searchResults.innerHTML = '';
+
+        if (books.length === 0) {
+            searchResults.innerHTML = '<p class="message">No se encontraron libros para esa búsqueda.</p>';
+            return;
+        }
+
+        // Crear una "tarjeta" por cada libro
+        books.forEach(book => {
+            const bookCard = document.createElement('div');
+            bookCard.className = 'book-card';
+
+            // Usar una imagen genérica si no hay portada
+            const coverImage = book.cover_image ? book.cover_image : 'https.via.placeholder.com/80x120.png?text=No+Cover';
+            
+            // Limitar la descripción
+            const description = book.description ? book.description.substring(0, 150) + '...' : 'No hay descripción disponible.';
+
+            bookCard.innerHTML = `
+                <img src="${coverImage}" alt="Portada de ${book.title}">
+                <div class="book-card-info">
+                    <h4>${book.title}</h4>
+                    <p><strong>Autor(es):</strong> ${book.authors ? book.authors.join(', ') : 'Desconocido'}</p>
+                    <p>${description}</p>
+                </div>
+                <div class="book-card-actions">
+                    <div class="rating-input">
+                        <label for="rating-${book.google_books_id}">Calificación:</label>
+                        <select id="rating-${book.google_books_id}">
+                            <option value="1">1 ★</option>
+                            <option value="2">2 ★</option>
+                            <option value="3">3 ★</option>
+                            <option value="4">4 ★</option>
+                            <option value="5" selected>5 ★</option>
+                        </select>
+                    </div>
+                    <button class="save-book-btn" 
+                            data-google-id="${book.google_books_id}"
+                            data-title="${book.title}"
+                            data-author="${book.authors ? book.authors.join(', ') : 'Desconocido'}">
+                        Guardar en mi lista
+                    </button>
+                </div>
+            `;
+            searchResults.appendChild(bookCard);
+        });
+    }
+
+
 
     // --- Event Listeners (Oyentes de eventos) ---
 
@@ -217,6 +327,11 @@ document.addEventListener('DOMContentLoaded', () => {
             showAuthForms(); // Muestra los formularios de login/registro
             console.log("Sesión cerrada.");
         });
+    }
+
+    // (NUEVO) Lógica de Búsqueda
+    if (searchForm) {
+        searchForm.addEventListener('submit', handleSearchSubmit);
     }
 
 });
