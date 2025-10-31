@@ -338,6 +338,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function handleDeleteRatingClick(event) {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        const button = event.target;
+        const ratingId = button.dataset.ratingId; // Obtenemos el ID de la calificación
+
+        // Pedir confirmación al usuario
+        if (!confirm('¿Estás seguro de que quieres eliminar este libro de tu lista?')) {
+            return; // Si el usuario cancela, no hacemos nada
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/api/ratings/${ratingId}`, {
+                method: 'DELETE', // ¡Usamos el método DELETE!
+                headers: {
+                    'Authorization': `Bearer ${token}` // Pase VIP
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // ¡Éxito! Si se eliminó, volvemos a cargar la lista de libros
+                fetchAndRenderMyBooks(); 
+            } else {
+                alert('Error al eliminar: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error de red al eliminar:', error);
+            alert('Error de conexión al eliminar.');
+        }
+    }
+
     // --- Event Listeners (Oyentes de eventos) ---
 
     // Lógica de Registro (sin cambios, solo la pegamos aquí)
@@ -484,6 +518,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.target.classList.contains('save-book-btn')) {
                 handleSaveBookClick(event);
             }
+        });
+    }
+    if (myBooksList) {
+        myBooksList.addEventListener('click', (event) => {
+            // Verificamos si se hizo clic en un botón de ELIMINAR
+            if (event.target.classList.contains('delete-rating-btn')) {
+                handleDeleteRatingClick(event);
+            }
+            
+            // (Aquí pondremos la lógica del botón de ACTUALIZAR después)
         });
     }
 });
