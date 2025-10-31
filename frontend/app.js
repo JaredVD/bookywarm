@@ -372,6 +372,45 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * (NUEVA) Maneja el clic en el botón "Actualizar".
+     */
+    async function handleUpdateRatingClick(event) {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        const button = event.target;
+        const ratingId = button.dataset.ratingId; // Obtenemos el ID de la calificación
+
+        // 1. Encontrar el <select> específico para este libro
+        const selectElement = document.getElementById(`update-rating-${ratingId}`);
+        const newRating = selectElement.value; // Obtenemos el nuevo valor (ej. "4")
+
+        try {
+            const response = await fetch(`${API_URL}/api/ratings/${ratingId}`, {
+                method: 'PUT', // ¡Usamos el método PUT!
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // Pase VIP
+                },
+                body: JSON.stringify({ rating: parseInt(newRating) }) // Enviamos la nueva calificación
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // ¡Éxito! Si se actualizó, volvemos a cargar la lista de libros
+                // para mostrar la calificación nueva.
+                fetchAndRenderMyBooks(); 
+            } else {
+                alert('Error al actualizar: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error de red al actualizar:', error);
+            alert('Error de conexión al actualizar.');
+        }
+    }
+
     // --- Event Listeners (Oyentes de eventos) ---
 
     // Lógica de Registro (sin cambios, solo la pegamos aquí)
@@ -528,6 +567,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // (Aquí pondremos la lógica del botón de ACTUALIZAR después)
+            // ¡NUEVO! Verificamos si se hizo clic en un botón de ACTUALIZAR
+            if (event.target.classList.contains('update-rating-btn')) {
+                handleUpdateRatingClick(event);
+            }
         });
     }
 });
